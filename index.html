@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AI Image Generator</title>
 
   <style>
@@ -60,7 +60,7 @@
     .input-section {
       display: flex;
       gap: 15px;
-      margin-bottom: 30px;
+      margin-bottom: 20px;
     }
 
     #prompt-input {
@@ -84,11 +84,19 @@
       border: none;
       border-radius: 8px;
       cursor: pointer;
+      font-size: 1rem;
+      transition: background-color 0.3s ease, transform 0.2s;
     }
 
-    #generate-btn:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
+    #generate-btn:hover {
+      background-color: #1a4e8c;
+      transform: scale(1.05);
+    }
+
+    .note {
+      margin-bottom: 30px;
+      font-size: 0.9rem;
+      color: #4a5568;
     }
 
     .image-container {
@@ -98,21 +106,9 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      position: relative;
       border: 2px dashed var(--grey-light);
-    }
-
-    #generated-image {
-      max-width: 100%;
-      max-height: 100%;
-      object-fit: contain;
-      display: none;
-    }
-
-    #loading {
-      position: absolute;
-      display: none;
-      font-size: 1.2rem;
+      color: #718096;
+      font-size: 1.1rem;
     }
   </style>
 </head>
@@ -129,14 +125,18 @@
         <input
           type="text"
           id="prompt-input"
-          placeholder="Describe the image you want to create"
-        />
+          placeholder="Describe the image you want to create (e.g., Cyberpunk city at night)"
+        >
         <button id="generate-btn">Generate</button>
       </div>
 
+      <p class="note">
+        Image generation runs on our AI inference demo powered by Stable Diffusion.
+        Clicking <b>Generate</b> will open it in a new tab.
+      </p>
+
       <div class="image-container">
-        <div id="loading">Generating your masterpiece...</div>
-        <img id="generated-image" alt="Generated AI Image" />
+        Image preview will appear in the AI demo
       </div>
     </div>
   </div>
@@ -144,56 +144,18 @@
   <script>
     const promptInput = document.getElementById("prompt-input");
     const generateBtn = document.getElementById("generate-btn");
-    const imageEl = document.getElementById("generated-image");
-    const loader = document.getElementById("loading");
 
-    generateBtn.addEventListener("click", async () => {
+    generateBtn.addEventListener("click", () => {
       const prompt = promptInput.value.trim();
+
       if (!prompt) {
         alert("Please enter an image description");
         return;
       }
 
-      loader.style.display = "block";
-      imageEl.style.display = "none";
-      generateBtn.disabled = true;
+      const hfUrl = "https://pranith0410-ai-image-generator.hf.space";
 
-      try {
-        const response = await fetch(
-          "https://pranith0410-ai-image-generator.hf.space/run/predict",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              data: [prompt]
-            })
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error("Backend error");
-        }
-
-        const result = await response.json();
-        const output = result.data[0];
-
-        // Handle base64 or URL
-        if (typeof output === "string") {
-          imageEl.src = output;
-        } else if (output.url) {
-          imageEl.src = output.url;
-        } else {
-          throw new Error("Unexpected response");
-        }
-
-        imageEl.style.display = "block";
-      } catch (err) {
-        console.error(err);
-        alert("Image generation failed. Please try again.");
-      } finally {
-        loader.style.display = "none";
-        generateBtn.disabled = false;
-      }
+      window.open(hfUrl, "_blank");
     });
   </script>
 </body>
