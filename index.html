@@ -24,6 +24,7 @@
       font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
       background-color: var(--bg-primary);
       color: var(--text-primary);
+      line-height: 1.6;
     }
 
     .container {
@@ -38,11 +39,16 @@
       padding: 40px;
       text-align: center;
       box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+      border: 1px solid #a0aec0;
     }
 
     h1 {
       font-size: 2.5rem;
       margin-bottom: 10px;
+    }
+
+    p {
+      color: #4a5568;
     }
 
     .input-section {
@@ -54,20 +60,24 @@
     #prompt-input {
       flex: 1;
       padding: 15px;
-      border-radius: 8px;
-      border: none;
       background-color: var(--grey-light);
+      border: none;
+      border-radius: 8px;
       font-size: 1rem;
+    }
+
+    #prompt-input:focus {
+      outline: 2px solid var(--accent-color);
     }
 
     #generate-btn {
       padding: 15px 30px;
-      border-radius: 8px;
-      border: none;
       background-color: var(--accent-color);
       color: white;
-      font-size: 1rem;
+      border: none;
+      border-radius: 8px;
       cursor: pointer;
+      font-size: 1rem;
     }
 
     #generate-btn:disabled {
@@ -76,24 +86,27 @@
     }
 
     .image-container {
-      background: white;
+      background-color: white;
       border-radius: 12px;
       min-height: 400px;
       display: flex;
       justify-content: center;
       align-items: center;
       position: relative;
+      border: 2px dashed var(--grey-light);
     }
 
     #generated-image {
       max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
       display: none;
     }
 
     #loading {
       position: absolute;
-      font-size: 1.2rem;
       display: none;
+      font-size: 1.2rem;
     }
   </style>
 </head>
@@ -108,14 +121,14 @@
         <input
           type="text"
           id="prompt-input"
-          placeholder="Cyberpunk city at night"
+          placeholder="Describe the image (e.g., Cyberpunk city at night)"
         />
         <button id="generate-btn">Generate</button>
       </div>
 
       <div class="image-container">
         <div id="loading">Generating your masterpiece...</div>
-        <img id="generated-image" alt="Generated Image" />
+        <img id="generated-image" alt="Generated AI Image" />
       </div>
     </div>
   </div>
@@ -130,7 +143,7 @@
       const prompt = promptInput.value.trim();
 
       if (!prompt) {
-        alert("Please enter a prompt");
+        alert("Please enter an image description");
         return;
       }
 
@@ -144,22 +157,36 @@
           {
             method: "POST",
             headers: {
-              "Content-Type": "application/json",
+              "Content-Type": "application/json"
             },
             body: JSON.stringify({
-              data: [prompt],
-            }),
+              data: [prompt]
+            })
           }
         );
 
-        const result = await response.json();
-        const imageBase64 = result.data[0];
+        if (!response.ok) {
+          throw new Error("Backend returned an error");
+        }
 
-        imageEl.src = imageBase64;
+        const result = await response.json();
+        console.log("Hugging Face response:", result);
+
+        const output = result.data[0];
+
+        // Handle different Gradio response formats
+        if (typeof output === "string") {
+          imageEl.src = output;
+        } else if (output.url) {
+          imageEl.src = output.url;
+        } else {
+          throw new Error("Unexpected response format");
+        }
+
         imageEl.style.display = "block";
-      } catch (err) {
-        alert("Image generation failed");
-        console.error(err);
+      } catch (error) {
+        console.error("Image generation failed:", error);
+        alert("Image generation failed. Please try again.");
       } finally {
         loader.style.display = "none";
         generateBtn.disabled = false;
