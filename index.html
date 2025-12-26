@@ -6,66 +6,161 @@
   <title>AI Image Generator</title>
 
   <style>
+    :root {
+      --bg-primary: #ffffff;
+      --bg-secondary: #e6f2ff;
+      --text-primary: #2c5282;
+      --accent-color: #2b6cb0;
+      --grey-light: #edf2f7;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
     body {
-      font-family: Arial, sans-serif;
-      background: #f5f9ff;
-      text-align: center;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+
+    .generator-wrapper {
+      background-color: var(--bg-secondary);
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
       padding: 40px;
+      text-align: center;
+      border: 1px solid #a0aec0;
     }
 
-    input {
-      padding: 12px;
-      width: 60%;
-      font-size: 16px;
+    .header {
+      margin-bottom: 30px;
     }
 
-    button {
-      padding: 12px 20px;
-      font-size: 16px;
+    .header h1 {
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+    }
+
+    .header p {
+      color: #4a5568;
+      font-size: 1rem;
+    }
+
+    .input-section {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+
+    #prompt-input {
+      flex-grow: 1;
+      padding: 15px;
+      background-color: var(--grey-light);
+      border: 2px solid transparent;
+      border-radius: 8px;
+      font-size: 1rem;
+    }
+
+    #prompt-input:focus {
+      outline: none;
+      border-color: var(--accent-color);
+    }
+
+    #generate-btn {
+      padding: 15px 30px;
+      background-color: var(--accent-color);
+      color: white;
+      border: none;
+      border-radius: 8px;
       cursor: pointer;
-      margin-left: 10px;
+    }
+
+    #generate-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .image-container {
+      background-color: white;
+      border-radius: 12px;
+      min-height: 400px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      border: 2px dashed var(--grey-light);
+    }
+
+    #generated-image {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      display: none;
     }
 
     #loading {
-      margin-top: 20px;
+      position: absolute;
       display: none;
-    }
-
-    img {
-      margin-top: 30px;
-      max-width: 90%;
-      display: none;
+      font-size: 1.2rem;
     }
   </style>
 </head>
 
 <body>
-  <h1>AI Image Generator</h1>
+  <div class="container">
+    <div class="generator-wrapper">
+      <div class="header">
+        <h1>AI IMAGE GENERATOR</h1>
+        <p>Transform your ideas into stunning visuals</p>
+      </div>
 
-  <input id="prompt" placeholder="A futuristic city at sunset" />
-  <button onclick="generate()">Generate</button>
+      <div class="input-section">
+        <input
+          type="text"
+          id="prompt-input"
+          placeholder="Describe the image you want to create"
+        />
+        <button id="generate-btn">Generate</button>
+      </div>
 
-  <div id="loading">Generating image… please wait ⏳</div>
-  <img id="output" />
+      <div class="image-container">
+        <div id="loading">Generating your masterpiece...</div>
+        <img id="generated-image" alt="Generated AI Image" />
+      </div>
+    </div>
+  </div>
 
   <script>
-    async function generate() {
-      const prompt = document.getElementById("prompt").value;
-      const loading = document.getElementById("loading");
-      const output = document.getElementById("output");
+    const promptInput = document.getElementById("prompt-input");
+    const generateBtn = document.getElementById("generate-btn");
+    const imageEl = document.getElementById("generated-image");
+    const loader = document.getElementById("loading");
 
+    generateBtn.addEventListener("click", async () => {
+      const prompt = promptInput.value.trim();
       if (!prompt) {
-        alert("Enter a prompt");
+        alert("Please enter an image description");
         return;
       }
 
-      loading.style.display = "block";
-      output.style.display = "none";
+      loader.style.display = "block";
+      imageEl.style.display = "none";
+      generateBtn.disabled = true;
 
       try {
-        // STEP 1: Join queue
-        const joinRes = await fetch(
-          "https://pranith0410-ai-image-generator.hf.space/queue/join",
+        const response = await fetch(
+          "https://pranith0410-ai-image-generator.hf.space/run/predict",
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -75,39 +170,31 @@
           }
         );
 
-        if (!joinRes.ok) throw new Error("Queue join failed");
-
-        const joinData = await joinRes.json();
-        const eventId = joinData.event_id;
-
-        // STEP 2: Poll result
-        let result;
-        while (true) {
-          const res = await fetch(
-            `https://pranith0410-ai-image-generator.hf.space/queue/data?event_id=${eventId}`
-          );
-
-          const text = await res.text();
-          if (text.includes("process_completed")) {
-            result = JSON.parse(text.split("\n").pop());
-            break;
-          }
-
-          await new Promise(r => setTimeout(r, 2000));
+        if (!response.ok) {
+          throw new Error("Backend error");
         }
 
-        const image = result.output.data[0];
+        const result = await response.json();
+        const output = result.data[0];
 
-        output.src = image;
-        output.style.display = "block";
+        // Handle base64 or URL
+        if (typeof output === "string") {
+          imageEl.src = output;
+        } else if (output.url) {
+          imageEl.src = output.url;
+        } else {
+          throw new Error("Unexpected response");
+        }
 
+        imageEl.style.display = "block";
       } catch (err) {
         console.error(err);
-        alert("Image generation failed");
+        alert("Image generation failed. Please try again.");
       } finally {
-        loading.style.display = "none";
+        loader.style.display = "none";
+        generateBtn.disabled = false;
       }
-    }
+    });
   </script>
 </body>
 </html>
